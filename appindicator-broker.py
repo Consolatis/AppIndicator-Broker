@@ -59,7 +59,6 @@ class Server:
 		indicator.set_title(args)
 
 	def _icon(self, indicator, args):
-		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 		indicator.set_icon(args)
 
 	def _label(self, indicator, args):
