@@ -52,7 +52,9 @@ class Server:
 			AppIndicator3.IndicatorCategory.APPLICATION_STATUS
 		)
 		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-		indicator.set_menu(Gtk.Menu())
+		menu = Gtk.Menu()
+		menu.set_reserve_toggle_size(False)
+		indicator.set_menu(menu)
 		self._indicators[identifier] = indicator
 
 	def _title(self, indicator, args):
@@ -74,7 +76,9 @@ class Server:
 		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
 	def _menu_clear(self, indicator, args):
-		indicator.set_menu(Gtk.Menu())
+		menu = Gtk.Menu()
+		menu.set_reserve_toggle_size(False)
+		indicator.set_menu(menu)
 
 	def _menu_add(self, indicator, args):
 		cmd, _, label = args.partition(' ')
