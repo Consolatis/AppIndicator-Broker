@@ -5,6 +5,7 @@
 
 import os
 import gi
+import signal
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -37,6 +38,8 @@ class Server:
 			"label": self._label,
 			"hide": self._hide,
 			"show": self._show,
+			"menu-clear": self._menu_clear,
+			"menu-add": self._menu_add,
 			"destroy": self._destroy,
 		}
 
@@ -49,9 +52,6 @@ class Server:
 			AppIndicator3.IndicatorCategory.APPLICATION_STATUS
 		)
 		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-		# TODO: Maybe do something with the menu.
-		#       A bi-directional communication via a named pipe
-		#       is a pretty horrible experience though.
 		indicator.set_menu(Gtk.Menu())
 		self._indicators[identifier] = indicator
 
@@ -73,6 +73,15 @@ class Server:
 	def _show(self, indicator, args):
 		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
+	def _menu_clear(self, indicator, args):
+		indicator.set_menu(Gtk.Menu())
+
+	def _menu_add(self, indicator, args):
+		cmd, _, label = args.partition(' ')
+		menuitem = Gtk.MenuItem.new_with_label(label)
+		menuitem.connect('activate', lambda item : self._execute(cmd))
+		indicator.get_menu().append(menuitem)
+
 	def _destroy(self, indicator, args):
 		# FIXME:
 		#        How the heck does one delete a appindicator?
@@ -85,6 +94,46 @@ class Server:
 		#        seem to work either.
 		#
 		del self._indicators[indicator.get_id()]
+
+	def _execute(self, command):
+		# We double fork to reparent the child process to pid 1
+
+		pid = os.fork()
+		if pid < 0:
+			print("Failed to fork()")
+			return
+
+		if pid != 0:
+			# main process
+			os.waitpid(pid, 0)
+			return
+
+		# child process
+		try:
+			c_pid = os.posix_spawnp(
+				command, (command,), os.environ,
+				# Not supported on my Python version so can't test.
+				#
+				# The named pipe uses O_CLOEXEC but not sure if
+				# glib opens random fds internally and if they
+				# also set O_CLOEXEC.
+				#
+				# /proc/$c_pid/fd/ looks fine and only seems
+				# to inherit stdin, stdout and stderr.
+				#
+				#file_actions=((os.POSIX_SPAWN_CLOSEFROM, 3),),
+				setsid=True,      # create new session
+				setsigmask=set(),
+				setsigdef=signal.valid_signals(),
+			)
+			if c_pid < 0:
+				print("posix_spawnp failed")
+				exit(1)
+		except Exception as e:
+			print(f"Got exception when starting {command}", type(e), e)
+			raise
+		finally:
+			exit(0)
 
 	def process_command(self, identifier, command, args):
 		if command not in self._handlers:
@@ -138,11 +187,11 @@ if __name__ == '__main__':
 	try:
 		# We do need to open the pipe for writing as well,
 		# otherwise glib gets mad by not handling IO_HUP correctly.
-		fd = os.open(sys.argv[1], os.O_RDWR)
+		fd = os.open(sys.argv[1], os.O_RDWR | os.O_CLOEXEC)
 	except FileNotFoundError:
 		clean_pipe = True
 		os.mkfifo(sys.argv[1])
-		fd = os.open(sys.argv[1], os.O_RDWR)
+		fd = os.open(sys.argv[1], os.O_RDWR | os.O_CLOEXEC)
 
 	try:
 		server = Server(fd)
