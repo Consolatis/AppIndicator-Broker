@@ -81,9 +81,12 @@ class Server:
 		indicator.set_menu(menu)
 
 	def _menu_add(self, indicator, args):
-		cmd, _, label = args.partition(' ')
+		cmd_with_args_str, label = args.split('#')
+		cmd_with_args_list = cmd_with_args_str.split()
+		cmd = cmd_with_args_list[0]
+		args = cmd_with_args_list[1:]
 		menuitem = Gtk.MenuItem.new_with_label(label)
-		menuitem.connect('activate', lambda item : self._execute(cmd))
+		menuitem.connect('activate', lambda item : self._execute(cmd, args))
 		indicator.get_menu().append(menuitem)
 
 	def _destroy(self, indicator, args):
@@ -99,7 +102,7 @@ class Server:
 		#
 		del self._indicators[indicator.get_id()]
 
-	def _execute(self, command):
+	def _execute(self, command, arguments):
 		# We double fork to reparent the child process to pid 1
 
 		pid = os.fork()
@@ -114,8 +117,9 @@ class Server:
 
 		# child process
 		try:
+			argv = [command] + arguments 
 			c_pid = os.posix_spawnp(
-				command, (command,), os.environ,
+				command, argv, os.environ,
 				# Not supported on my Python version so can't test.
 				#
 				# The named pipe uses O_CLOEXEC but not sure if
