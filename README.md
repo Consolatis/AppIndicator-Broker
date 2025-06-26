@@ -19,8 +19,9 @@ echo "foo show" > "$SNI_BROKER"
 echo "foo icon dialog-warning" > "$SNI_BROKER"
 
 # Add menu entries
-echo "foo menu-add date Show the date on console" > "$SNI_BROKER"
-echo "foo menu-add foot Start the foot terminal" > "$SNI_BROKER"
+echo "foo menu-add date#Show the date on console" > "$SNI_BROKER"
+echo "foo menu-add foot#Start the foot terminal" > "$SNI_BROKER"
+echo "foo menu-add echo Hello world!#Say hello on console" > "$SNI_BROKER"
 
 # Clear the menu
 echo "foo menu-clear" > "$SNI_BROKER"
