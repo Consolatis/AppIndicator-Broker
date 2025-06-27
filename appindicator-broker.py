@@ -47,6 +47,10 @@ class Server:
 		if identifier in self._indicators:
 			print("Not creating the same identifier twice")
 			return
+		with open("/tmp/appindicators.created", "a") as myfile:
+			myfile.write(identifier + "\n")
+		with open("/tmp/appindicators.visible", "a") as myfile:
+			myfile.write(identifier + "\n")
 		indicator = AppIndicator3.Indicator.new(
 			identifier, icon,
 			AppIndicator3.IndicatorCategory.APPLICATION_STATUS
@@ -70,9 +74,13 @@ class Server:
 		indicator.set_label(args, args)
 
 	def _hide(self, indicator, args):
+		identifier = indicator.get_id()
+		os.system("sed -i '/^" + identifier + "$/ d' /tmp/appindicators.visible")
 		indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
 
 	def _show(self, indicator, args):
+		identifier = indicator.get_id()
+		os.system("grep -q " + identifier + " /tmp/appindicators.visible || echo '" + identifier + "' >>/tmp/appindicators.visible")
 		indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
 	def _menu_clear(self, indicator, args):
